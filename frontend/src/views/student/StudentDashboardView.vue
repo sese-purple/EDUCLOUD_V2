@@ -1,154 +1,190 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../../services/api'
+import StudentSidebar from '../../components/StudentSidebar.vue'
 import {
-  BookOpen, ClipboardList, CheckCircle,
-  Award, Bell, Search, LogOut,
-  ChevronRight, Clock, FileText
+  BookOpen, Award, Clock, Bell,
+  ChevronRight, Video, FileText, Calendar
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const data = ref<any>({ courses: [], gpa: 0, enrolled_count: 0, pending_tasks: 0, next_session: null, due_assignments: [] })
+const isLoading = ref(true)
 
-const studentStats = ref([
-  { name: 'Current GPA', value: '3.8', icon: Award, color: 'text-yellow-600', bg: 'bg-yellow-100' },
-  { name: 'Enrolled Modules', value: '4', icon: BookOpen, color: 'text-indigo-600', bg: 'bg-indigo-100' },
-  { name: 'Pending Tasks', value: '3', icon: Clock, color: 'text-orange-600', bg: 'bg-orange-100' },
-])
+const countdown = ref('')
 
-const enrolledCourses = ref([
-  { id: 1, title: 'Integrated Internship Management', code: 'SYS-400', instructor: 'Dr. Smith', progress: 85, color: 'bg-indigo-500' },
-  { id: 2, title: 'Advanced Web Architecture', code: 'SE-301', instructor: 'Prof. Davis', progress: 40, color: 'bg-blue-500' },
-])
+const fetchDashboard = async () => {
+  isLoading.value = true
+  try {
+    const res = await api.get('student-dashboard/')
+    data.value = res.data
+  } catch (err) {
+    console.error(err)
+  } finally {
+    isLoading.value = false
+  }
+}
 
-const pendingTasks = ref([
-  { id: 1, title: 'Submit Week 4 Logbook Entry', course: 'SYS-400', due: 'Today, 11:59 PM', type: 'Logbook' },
-  { id: 2, title: 'API Security Quiz', course: 'SE-301', due: 'Tomorrow', type: 'Quiz' },
-])
+const updateCountdown = () => {
+  const session = data.value.next_session
+  if (!session?.scheduled_at) { countdown.value = ''; return }
+  const diff = new Date(session.scheduled_at).getTime() - Date.now()
+  if (diff <= 0) { countdown.value = 'Starting now!'; return }
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  countdown.value = `${h}h ${m}m`
+}
+
+let interval: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  fetchDashboard().then(() => { updateCountdown(); interval = setInterval(updateCountdown, 10000) })
+})
 </script>
 
 <template>
   <div class="flex h-screen bg-gray-50 font-sans overflow-hidden">
-
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col hidden md:flex flex-shrink-0 z-20">
-      <div class="h-16 flex items-center px-6 border-b border-gray-200">
-        <h1 class="text-xl font-bold text-gray-900 tracking-tight">
-          EDUCLOUD <span class="text-indigo-600">2.0</span>
-        </h1>
-      </div>
-
-      <nav class="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
-        <p class="px-3 text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">My Workspace</p>
-
-        <a href="#" class="flex items-center px-3 py-2.5 bg-indigo-50 text-indigo-700 rounded-lg font-medium group">
-          <BookOpen class="w-5 h-5 mr-3 text-indigo-600" /> My Courses
-        </a>
-        <a href="#" class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors group">
-          <ClipboardList class="w-5 h-5 mr-3 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Digital Logbook
-        </a>
-        <a href="#" class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors group">
-          <CheckCircle class="w-5 h-5 mr-3 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Assignments
-        </a>
-        <a href="#" class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors group">
-          <Award class="w-5 h-5 mr-3 text-gray-400 group-hover:text-indigo-600 transition-colors" /> Official Marksheet
-        </a>
-      </nav>
-
-      <div class="p-4 border-t border-gray-200">
-        <a @click="router.push('/login')" class="flex items-center px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors mt-1 cursor-pointer">
-          <LogOut class="w-5 h-5 mr-3 text-red-500" /> Sign Out
-        </a>
-      </div>
-    </aside>
-
+    <StudentSidebar />
     <div class="flex-1 flex flex-col overflow-hidden">
-
       <header class="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-10">
-        <div class="flex items-center flex-1">
-          <div class="relative w-full max-w-md hidden sm:block">
-            <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-            <input type="text" placeholder="Search courses or materials..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm">
-          </div>
-        </div>
+        <h2 class="text-lg font-bold text-gray-800">Student Dashboard</h2>
         <div class="flex items-center space-x-4">
-          <Bell class="h-6 w-6 text-gray-400 hover:text-gray-600 cursor-pointer" />
-          <div class="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md cursor-pointer">
-            S </div>
+          <Bell class="h-5 w-5 text-gray-400 hover:text-gray-600 cursor-pointer" />
+          <div class="h-8 w-8 rounded-full bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm text-sm">S</div>
         </div>
       </header>
 
       <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
 
-        <div class="mb-8 bg-indigo-900 rounded-2xl p-8 text-white shadow-lg relative overflow-hidden">
-          <div class="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-indigo-600 rounded-full opacity-50 blur-3xl"></div>
-          <h2 class="text-2xl font-bold relative z-10">Welcome back, Student</h2>
-          <p class="text-indigo-200 mt-2 max-w-xl relative z-10">You have 1 pending logbook entry due today. Keep up the great work on your internship modules!</p>
-        </div>
+        <div v-if="isLoading" class="text-center py-16 text-gray-500">Loading dashboard...</div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div v-for="stat in studentStats" :key="stat.name" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex items-center">
-            <div :class="[stat.bg, 'p-3 rounded-lg mr-4']">
-              <component :is="stat.icon" :class="['h-6 w-6', stat.color]" />
+        <template v-else>
+
+          <!-- Up Next Hero Widget -->
+          <div v-if="data.next_session" class="mb-8 bg-gradient-to-r from-indigo-600 to-indigo-800 rounded-2xl p-6 sm:p-8 text-white shadow-lg relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-48 h-48 bg-indigo-500 rounded-full opacity-30 blur-3xl -mr-12 -mt-12"></div>
+            <div class="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p class="text-indigo-200 text-sm font-medium uppercase tracking-wider">Up Next</p>
+                <h2 class="text-xl sm:text-2xl font-bold mt-1">{{ data.next_session.title }}</h2>
+                <p class="text-indigo-200 text-sm mt-1">{{ data.next_session.course }}</p>
+                <div v-if="countdown" class="mt-2 flex items-center">
+                  <Clock class="h-5 w-5 mr-2 text-indigo-200" />
+                  <span class="text-2xl font-mono font-bold">{{ countdown }}</span>
+                </div>
+              </div>
+              <a v-if="data.next_session.meeting_link" :href="data.next_session.meeting_link" target="_blank"
+                class="mt-4 sm:mt-0 inline-flex items-center px-6 py-3 bg-white text-indigo-700 rounded-xl font-bold text-sm hover:bg-indigo-50 transition-all shadow-lg">
+                <Video class="h-5 w-5 mr-2" /> Join Now
+              </a>
             </div>
+          </div>
+
+          <!-- Stats -->
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+              <div class="flex items-center">
+                <div class="p-2.5 bg-indigo-100 rounded-lg mr-3"><BookOpen class="h-5 w-5 text-indigo-600" /></div>
+                <div>
+                  <p class="text-xs font-medium text-gray-500">Enrolled</p>
+                  <p class="text-xl font-bold text-gray-900">{{ data.enrolled_count }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+              <div class="flex items-center">
+                <div class="p-2.5 bg-yellow-100 rounded-lg mr-3"><Award class="h-5 w-5 text-yellow-600" /></div>
+                <div>
+                  <p class="text-xs font-medium text-gray-500">GPA</p>
+                  <p class="text-xl font-bold text-gray-900">{{ data.gpa }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+              <div class="flex items-center">
+                <div class="p-2.5 bg-orange-100 rounded-lg mr-3"><Clock class="h-5 w-5 text-orange-600" /></div>
+                <div>
+                  <p class="text-xs font-medium text-gray-500">Pending</p>
+                  <p class="text-xl font-bold text-gray-900">{{ data.pending_tasks }}</p>
+                </div>
+              </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5">
+              <div class="flex items-center">
+                <div class="p-2.5 bg-emerald-100 rounded-lg mr-3"><Calendar class="h-5 w-5 text-emerald-600" /></div>
+                <div>
+                  <p class="text-xs font-medium text-gray-500">Courses</p>
+                  <p class="text-xl font-bold text-gray-900">{{ data.courses.length }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- Enrolled Courses -->
+            <div class="lg:col-span-2">
+              <h3 class="text-lg font-bold text-gray-900 mb-4">My Courses</h3>
+              <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <ul class="divide-y divide-gray-200">
+                  <li v-for="c in data.courses" :key="c.id"
+                      @click="router.push(`/student/course/${c.id}`)"
+                      class="p-4 sm:p-5 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between">
+                    <div class="flex items-center space-x-4 min-w-0">
+                      <div class="h-10 w-10 sm:h-12 sm:w-12 bg-indigo-100 rounded-lg flex items-center justify-center shrink-0">
+                        <span class="text-indigo-700 font-bold text-sm">{{ c.course_code?.split('-')[0] }}</span>
+                      </div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-bold text-gray-900 truncate">{{ c.title }}</p>
+                        <p class="text-xs text-gray-500 truncate">{{ c.course_code }} • {{ c.instructor_name }}</p>
+                        <div v-if="c.attendance_pct !== null" class="mt-1.5 flex items-center text-xs">
+                          <span class="text-gray-400 mr-2">Attendance: {{ c.attendance_pct }}%</span>
+                          <div class="w-20 bg-gray-200 rounded-full h-1.5">
+                            <div class="h-1.5 rounded-full" :class="c.attendance_pct >= 80 ? 'bg-emerald-500' : 'bg-red-500'"
+                              :style="{ width: c.attendance_pct + '%' }"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight class="h-5 w-5 text-gray-400 ml-3 shrink-0" />
+                  </li>
+                </ul>
+                <div v-if="!data.courses.length" class="p-8 text-center text-gray-400">
+                  <BookOpen class="h-10 w-10 mx-auto mb-2 text-gray-300" />
+                  <p class="text-sm">Not enrolled in any courses yet.</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Due Assignments -->
             <div>
-              <p class="text-sm font-medium text-gray-500">{{ stat.name }}</p>
-              <h3 class="text-2xl font-bold text-gray-900">{{ stat.value }}</h3>
-            </div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          <div class="lg:col-span-2">
-            <h3 class="text-lg font-bold text-gray-900 mb-4">My Official Modules</h3>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <ul class="divide-y divide-gray-200">
-                <li v-for="course in enrolledCourses" :key="course.id" class="p-6 hover:bg-gray-50 transition-colors cursor-pointer flex items-center justify-between">
-                  <div class="flex items-center space-x-4 w-full">
-                    <div :class="[course.color, 'h-12 w-12 rounded-lg flex items-center justify-center shadow-inner flex-shrink-0']">
-                      <span class="text-white font-bold text-sm">{{ course.code.split('-')[0] }}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                      <p class="text-sm font-bold text-gray-900 truncate">{{ course.title }}</p>
-                      <p class="text-sm text-gray-500 truncate">{{ course.code }} • Prof: {{ course.instructor }}</p>
-                    </div>
-                    <div class="hidden sm:block w-32">
-                      <div class="flex justify-between text-xs mb-1">
-                        <span class="text-gray-500">Progress</span>
-                        <span class="font-medium text-gray-900">{{ course.progress }}%</span>
+              <h3 class="text-lg font-bold text-gray-900 mb-4">Due Soon</h3>
+              <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <ul v-if="data.due_assignments?.length" class="divide-y divide-gray-200">
+                  <li v-for="a in data.due_assignments" :key="a.id"
+                      @click="router.push(`/student/course/${a.course_id}/assignment/${a.id}`)"
+                      class="p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                    <div class="flex items-start">
+                      <div class="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center mr-3 shrink-0 mt-0.5">
+                        <FileText class="h-4 w-4 text-orange-600" />
                       </div>
-                      <div class="w-full bg-gray-200 rounded-full h-1.5">
-                        <div class="bg-indigo-600 h-1.5 rounded-full" :style="{ width: course.progress + '%' }"></div>
+                      <div class="min-w-0">
+                        <p class="text-sm font-bold text-gray-900 truncate">{{ a.title }}</p>
+                        <p class="text-xs text-gray-500 mt-0.5">{{ a.course }}</p>
+                        <p v-if="a.due_date" class="text-xs text-red-500 font-medium mt-1">Due {{ new Date(a.due_date).toLocaleDateString() }}</p>
                       </div>
                     </div>
-                  </div>
-                  <ChevronRight class="h-5 w-5 text-gray-400 ml-4 flex-shrink-0" />
-                </li>
-              </ul>
+                  </li>
+                </ul>
+                <div v-else class="p-6 text-center text-gray-400">
+                  <CheckCircle class="h-8 w-8 mx-auto mb-1 text-gray-300" />
+                  <p class="text-xs">All caught up!</p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div>
-            <h3 class="text-lg font-bold text-gray-900 mb-4">Action Required</h3>
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-              <ul class="space-y-4">
-                <li v-for="task in pendingTasks" :key="task.id" class="flex items-start">
-                  <div class="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center mr-3 flex-shrink-0 mt-0.5">
-                    <FileText v-if="task.type === 'Logbook'" class="h-4 w-4 text-orange-600" />
-                    <CheckCircle v-else class="h-4 w-4 text-orange-600" />
-                  </div>
-                  <div>
-                    <p class="text-sm font-bold text-gray-900">{{ task.title }}</p>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ task.course }} • Due: {{ task.due }}</p>
-                  </div>
-                </li>
-              </ul>
-              <button class="w-full mt-6 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors">
-                View All Tasks
-              </button>
-            </div>
           </div>
-
-        </div>
+        </template>
       </main>
     </div>
   </div>

@@ -7,6 +7,7 @@ class Institution(models.Model):
     name = models.CharField(max_length=255)
     domain = models.CharField(max_length=100, unique=True)
     logo_url = models.URLField(blank=True, null=True)
+    security_policies = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.name
@@ -30,8 +31,10 @@ class Course(models.Model):
     title = models.CharField(max_length=255)
     course_code = models.CharField(max_length=20, default='')
     description = models.TextField(blank=True, null=True)
+    syllabus = models.TextField(blank=True, null=True)
     institution = models.ForeignKey(Institution, on_delete=models.CASCADE)
     instructor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='courses')
+    enrollment_key = models.CharField(max_length=20, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -120,19 +123,32 @@ class AttemptAnswer(models.Model):
 
 class ClassSession(models.Model):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='sessions')
+    title = models.CharField(max_length=255, default='Live Session')
     date = models.DateTimeField(auto_now_add=True)
+    scheduled_at = models.DateTimeField(null=True, blank=True)
+    ends_at = models.DateTimeField(null=True, blank=True)
+    meeting_link = models.URLField(blank=True, default='')
+    recording_url = models.URLField(blank=True, default='')
+    is_live = models.BooleanField(default=False)
     qr_code_uuid = models.CharField(max_length=255, unique=True)
     gps_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     gps_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     allowed_radius_meters = models.IntegerField(default=50)
 
     def __str__(self):
-        return f"{self.course.title} Session - {self.date.strftime('%Y-%m-%d')}"
+        return f"{self.title} - {self.course.title}"
 
 
 class AttendanceRecord(models.Model):
+    STATUS_CHOICES = (
+        ('present', 'Present'),
+        ('absent', 'Absent'),
+        ('late', 'Late'),
+        ('excused', 'Excused'),
+    )
     session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, related_name='attendance_records')
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='attendance')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='present')
     timestamp = models.DateTimeField(auto_now_add=True)
     is_verified = models.BooleanField(default=False)
 
@@ -140,7 +156,7 @@ class AttendanceRecord(models.Model):
         unique_together = ('session', 'student')
 
     def __str__(self):
-        return f"{self.student.username} - {self.session.course.title} Check-in"
+        return f"{self.student.username} - {self.session.course.title}: {self.get_status_display()}"
 
 
 class ProjectGroup(models.Model):
@@ -168,3 +184,56 @@ class Task(models.Model):
 
     def __str__(self):
         return f"{self.title} [{self.get_status_display()}]"
+
+
+class Assignment(models.Model):
+    TYPE_CHOICES = (
+        ('individual', 'Individual'),
+        ('group', 'Group'),
+    )
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='assignments')
+    title = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    due_date = models.DateTimeField(null=True, blank=True)
+    max_points = models.IntegerField(default=100)
+    assignment_type = models.CharField(max_length=20, choices=TYPE_CHOICES, default='individual')
+    file = models.FileField(upload_to='assignments/', blank=True, null=True)
+    groups = models.ManyToManyField(ProjectGroup, blank=True, related_name='assignments')
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.course.title})"
+
+
+class Submission(models.Model):
+    assignment = models.ForeignKey(Assignment, on_delete=models.CASCADE, related_name='submissions')
+    student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
+    group = models.ForeignKey(ProjectGroup, on_delete=models.SET_NULL, null=True, blank=True)
+    file = models.FileField(upload_to='submissions/', blank=True, null=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+    grade = models.IntegerField(null=True, blank=True)
+    feedback = models.TextField(blank=True, default='')
+    is_late = models.BooleanField(default=False)
+    graded_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('assignment', 'student')
+
+    def __str__(self):
+        return f"{self.student.username if self.student else 'Group'} - {self.assignment.title}"
+
+
+class Material(models.Model):
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='materials')
+    title = models.CharField(max_length=255)
+    file = models.FileField(upload_to='materials/', blank=True, null=True)
+    file_url = models.URLField(blank=True, null=True)
+    file_type = models.CharField(max_length=50, blank=True, default='')
+    uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.title} ({self.course.title})"
+
+

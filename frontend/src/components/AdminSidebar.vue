@@ -54,8 +54,9 @@ const handleLogout = () => {
     </nav>
 
     <div class="p-4 border-t border-slate-800 bg-slate-950/30">
-      <a href="#" class="flex items-center px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg font-medium transition-all cursor-pointer group">
-        <Settings class="w-5 h-5 mr-3 text-slate-400 group-hover:text-white transition-colors" /> 
+      <a @click="router.push('/admin/settings')"
+         :class="[route.path === '/admin/settings' ? 'bg-indigo-600 text-white shadow-md' : 'hover:bg-slate-800 hover:text-white', 'flex items-center px-3 py-2.5 rounded-lg font-medium transition-all cursor-pointer group']">
+        <Settings :class="[route.path === '/admin/settings' ? 'text-white' : 'text-slate-400 group-hover:text-white', 'w-5 h-5 mr-3 transition-colors']" /> 
         Security Settings
       </a>
       <a @click="handleLogout" class="flex items-center px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg font-medium transition-all mt-1 cursor-pointer">

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (Institution, User, Course, Enrollment, Grade, Quiz, Question,
                      QuizAttempt, AttemptAnswer, ClassSession, AttendanceRecord,
-                     ProjectGroup, Task)
+                     ProjectGroup, Task, Assignment, Submission, Material)
 
 
 class InstitutionSerializer(serializers.ModelSerializer):
@@ -39,10 +39,25 @@ class CourseSerializer(serializers.ModelSerializer):
     instructor = UserSerializer(read_only=True)
     instructor_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
     institution = InstitutionSerializer(read_only=True)
+    is_enrolled = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
-        fields = ['id', 'title', 'course_code', 'description', 'institution', 'instructor', 'instructor_id', 'created_at']
+        fields = ['id', 'title', 'course_code', 'description', 'syllabus', 'enrollment_key',
+                  'institution', 'instructor', 'instructor_id', 'is_enrolled', 'created_at', 'updated_at']
+
+    def get_is_enrolled(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return Enrollment.objects.filter(student=request.user, course=obj).exists()
+        return False
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.role == 'student':
+            data.pop('enrollment_key', None)
+        return data
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
@@ -57,10 +72,22 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 class GradeSerializer(serializers.ModelSerializer):
     student = UserSerializer(read_only=True)
     course = CourseSerializer(read_only=True)
+    student_id = serializers.IntegerField(write_only=True)
+    course_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = Grade
-        fields = ['id', 'student', 'course', 'grade', 'assigned_at']
+        fields = ['id', 'student', 'course', 'student_id', 'course_id', 'grade', 'assigned_at']
+
+    def create(self, validated_data):
+        validated_data.pop('student_id')
+        validated_data.pop('course_id')
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        validated_data.pop('student_id', None)
+        validated_data.pop('course_id', None)
+        return super().update(instance, validated_data)
 
 
 class ClassSessionSerializer(serializers.ModelSerializer):
@@ -94,6 +121,33 @@ class ProjectGroupSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'course', 'members', 'tasks']
 
 
+class AssignmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Assignment
+        fields = '__all__'
+
+
+class SubmissionSerializer(serializers.ModelSerializer):
+    student_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Submission
+        fields = '__all__'
+
+    def get_student_name(self, obj):
+        if obj.student:
+            return f"{obj.student.first_name} {obj.student.last_name}"
+        return None
+
+
+class MaterialSerializer(serializers.ModelSerializer):
+    uploaded_by = UserSerializer(read_only=True)
+
+    class Meta:
+        model = Material
+        fields = '__all__'
+
+
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
@@ -102,10 +156,12 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 class QuizSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, read_only=True)
+    instructor = UserSerializer(read_only=True)
 
     class Meta:
         model = Quiz
-        fields = ['id', 'title', 'description', 'course', 'time_limit', 'total_points', 'questions']
+        fields = ['id', 'title', 'description', 'course', 'time_limit', 'total_points',
+                  'is_active', 'due_date', 'allow_multiple_attempts', 'instructor', 'questions']
 
 
 class AttemptAnswerSerializer(serializers.ModelSerializer):
