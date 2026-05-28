@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import api from '../../services/api'
 import AdminSidebar from '../../components/AdminSidebar.vue'
 import {
   Users, BookOpen, Database,
@@ -10,16 +11,36 @@ import {
 const router = useRouter()
 
 const systemStats = ref([
-  { name: 'Total Registered Users', value: '482', icon: Users, color: 'text-blue-500' },
-  { name: 'Active Course Shells', value: '24', icon: BookOpen, color: 'text-indigo-500' },
-  { name: 'Database Health', value: '99.9%', icon: Database, color: 'text-emerald-500' },
+  { name: 'Total Registered Users', value: '...', icon: Users, color: 'text-blue-500' },
+  { name: 'Active Course Shells', value: '...', icon: BookOpen, color: 'text-indigo-500' },
+  { name: 'Total Enrollments', value: '...', icon: Database, color: 'text-emerald-500' },
 ])
 
-const recentActivity = ref([
-  { id: 1, action: 'Created new course shell: SE-301', user: 'Admin', time: '10 mins ago' },
-  { id: 2, action: 'Bulk imported 120 student accounts', user: 'Admin', time: '1 hour ago' },
-  { id: 3, action: 'Assigned Instructor "Dr. Smith" to SYS-400', user: 'Admin', time: '3 hours ago' },
-])
+const recentActivity = ref<any[]>([])
+
+const fetchDashboardData = async () => {
+  try {
+    const response = await api.get('dashboard/')
+    const data = response.data
+    systemStats.value = [
+      { name: 'Total Registered Users', value: String(data.total_users), icon: Users, color: 'text-blue-500' },
+      { name: 'Active Course Shells', value: String(data.total_courses), icon: BookOpen, color: 'text-indigo-500' },
+      { name: 'Total Enrollments', value: String(data.total_enrollments), icon: Database, color: 'text-emerald-500' },
+    ]
+    recentActivity.value = data.recent_activities.map((a: any) => ({
+      id: a.id,
+      action: a.action,
+      user: a.user,
+      time: new Date(a.time).toLocaleString(),
+    }))
+  } catch (error) {
+    console.error("Error fetching dashboard data:", error)
+  }
+}
+
+onMounted(() => {
+  fetchDashboardData()
+})
 </script>
 
 <template>
@@ -47,7 +68,7 @@ const recentActivity = ref([
             <p class="text-gray-500 text-sm mt-1">Monitor system health and provision new institutional resources.</p>
           </div>
           <div class="flex space-x-3">
-            <button class="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+            <button @click="router.push('/admin/courses')" class="flex items-center px-4 py-2 bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
               <FolderPlus class="h-4 w-4 mr-2 text-indigo-600" /> Provision Course
             </button>
             <button @click="router.push('/admin/users')" class="flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors shadow-sm">

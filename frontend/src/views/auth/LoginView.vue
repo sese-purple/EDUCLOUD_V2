@@ -23,19 +23,15 @@ const handleLogin = async () => {
 
     localStorage.setItem('access_token', response.data.access)
     localStorage.setItem('refresh_token', response.data.refresh)
+    localStorage.setItem('user_role', response.data.role)
+    localStorage.setItem('user_id', response.data.user_id)
+    localStorage.setItem('username', response.data.username)
 
-    let userRole = 'student'
+    const role = response.data.role
 
-    const uname = username.value.toLowerCase()
-
-    if (uname === 'admin' || uname.includes('admin')) {
-      userRole = 'admin'
-    } else if (uname.includes('prof') || uname.includes('dr') || uname === 'instructor') {
-      userRole = 'instructor'
-    }
-
-    switch (userRole) {
-      case 'admin':
+    switch (role) {
+      case 'super_admin':
+      case 'inst_admin':
         router.push({ name: 'admin-dashboard' })
         break
       case 'instructor':

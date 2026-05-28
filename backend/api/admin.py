@@ -1,8 +1,8 @@
 from django.contrib import admin
-from .models import UserProfile, Course, Enrollment, Grade, Quiz, Question, QuizAttempt, AttemptAnswer , ClassSession, AttendanceRecord, ProjectGroup, Task
+from .models import Institution, User, Course, Enrollment, Grade, Quiz, Question, QuizAttempt, AttemptAnswer, ClassSession, AttendanceRecord, ProjectGroup, Task
 
-# This tells the Admin panel to display all of these tables
-admin.site.register(UserProfile)
+admin.site.register(Institution)
+admin.site.register(User)
 admin.site.register(Course)
 admin.site.register(Enrollment)
 admin.site.register(Grade)

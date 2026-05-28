@@ -14,6 +14,8 @@ const router = useRouter()
 const users = ref<any[]>([])
 const isLoading = ref(true)
 const showAddUserForm = ref(false)
+const searchQuery = ref('')
+const isCreating = ref(false)
 
 // New User Form State
 const newUser = ref({
@@ -22,15 +24,18 @@ const newUser = ref({
   password: '',
   first_name: '',
   last_name: '',
-  // Default to student. In a production app, you'd map this to your Django UserProfile
-  role: 'student' 
+  role: 'student'
 })
 
 // Fetch all users from Django when the page loads
 const fetchUsers = async () => {
   isLoading.value = true
   try {
-    const response = await api.get('users/')
+    const params: any = {}
+    if (searchQuery.value.trim()) {
+      params.search = searchQuery.value.trim()
+    }
+    const response = await api.get('users/', { params })
     users.value = response.data
   } catch (error) {
     console.error("Error fetching users:", error)
@@ -41,13 +46,15 @@ const fetchUsers = async () => {
 
 // Send the new user data to Django
 const handleCreateUser = async () => {
+  isCreating.value = true
   try {
     await api.post('users/', {
       username: newUser.value.username,
       email: newUser.value.email,
       password: newUser.value.password,
       first_name: newUser.value.first_name,
-      last_name: newUser.value.last_name
+      last_name: newUser.value.last_name,
+      role: newUser.value.role
     })
     
     // Reset form and hide it
@@ -60,7 +67,29 @@ const handleCreateUser = async () => {
   } catch (error) {
     console.error("Error creating user:", error)
     alert("Failed to create user. Check the console for details.")
+  } finally {
+    isCreating.value = false
   }
+}
+
+const roleDisplay = (role: string) => {
+  const map: Record<string, string> = {
+    'super_admin': 'Super Admin',
+    'inst_admin': 'Institution Admin',
+    'instructor': 'Instructor',
+    'student': 'Student',
+  }
+  return map[role] || role
+}
+
+const roleBadgeColor = (role: string) => {
+  const map: Record<string, string> = {
+    'super_admin': 'bg-purple-100 text-purple-800',
+    'inst_admin': 'bg-red-100 text-red-800',
+    'instructor': 'bg-blue-100 text-blue-800',
+    'student': 'bg-green-100 text-green-800',
+  }
+  return map[role] || 'bg-gray-100 text-gray-800'
 }
 
 // Run the fetch function as soon as the component loads
@@ -131,12 +160,14 @@ onMounted(() => {
             <select v-model="newUser.role" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
               <option value="student">Student</option>
               <option value="instructor">Instructor</option>
+              <option value="inst_admin">Institution Admin</option>
+              <option value="super_admin">Super Admin</option>
             </select>
           </div>
           
           <div class="md:col-span-2 mt-2">
-            <button type="submit" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-lg transition-colors shadow-sm">
-              Create Account
+            <button type="submit" :disabled="isCreating" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-lg transition-colors shadow-sm disabled:opacity-70">
+              {{ isCreating ? 'Creating Account...' : 'Create Account' }}
             </button>
           </div>
         </form>
@@ -145,7 +176,7 @@ onMounted(() => {
       <div class="flex items-center justify-between mb-4">
         <div class="relative w-full max-w-md">
           <Search class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input type="text" placeholder="Search by name, username, or email..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm">
+          <input v-model="searchQuery" @input="fetchUsers" type="text" placeholder="Search by name, username, or email..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm shadow-sm">
         </div>
       </div>
 
@@ -185,9 +216,8 @@ onMounted(() => {
               </td>
               
               <td class="px-6 py-4 whitespace-nowrap">
-                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                  <span v-if="user.username === 'admin'">Administrator</span>
-                  <span v-else>Student / Instructor</span>
+                <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full" :class="roleBadgeColor(user.role)">
+                  {{ roleDisplay(user.role) }}
                 </span>
               </td>
               

@@ -7,6 +7,15 @@ import {
 
 const router = useRouter()
 const route = useRoute()
+
+const handleLogout = () => {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('user_role')
+  localStorage.removeItem('user_id')
+  localStorage.removeItem('username')
+  router.push('/login')
+}
 </script>
 
 <template>
@@ -49,7 +58,7 @@ const route = useRoute()
         <Settings class="w-5 h-5 mr-3 text-slate-400 group-hover:text-white transition-colors" /> 
         Security Settings
       </a>
-      <a @click="router.push('/login')" class="flex items-center px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg font-medium transition-all mt-1 cursor-pointer">
+      <a @click="handleLogout" class="flex items-center px-3 py-2.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg font-medium transition-all mt-1 cursor-pointer">
         <LogOut class="w-5 h-5 mr-3 text-red-400" /> 
         Force Logout
       </a>

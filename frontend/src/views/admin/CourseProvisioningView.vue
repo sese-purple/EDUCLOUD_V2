@@ -17,6 +17,7 @@ const isLoading = ref(true)
 
 const newCourse = ref({
   title: '',
+  course_code: '',
   description: '',
   instructor_id: ''
 })
@@ -42,12 +43,13 @@ const handleCreateCourse = async () => {
   try {
     await api.post('courses/', {
       title: newCourse.value.title,
+      course_code: newCourse.value.course_code,
       description: newCourse.value.description,
-      instructor: newCourse.value.instructor_id
+      instructor_id: newCourse.value.instructor_id
     })
 
     showCreateForm.value = false
-    newCourse.value = { title: '', description: '', instructor_id: '' }
+    newCourse.value = { title: '', course_code: '', description: '', instructor_id: '' }
 
     await loadData()
   } catch (error) {
@@ -101,6 +103,12 @@ onMounted(() => {
               </div>
 
               <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Course Code</label>
+                <input v-model="newCourse.course_code" type="text" required placeholder="e.g. CS-301"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm">
+              </div>
+
+              <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Assign Lead Instructor</label>
                 <select v-model="newCourse.instructor_id" required
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 text-sm bg-white">
@@ -145,6 +153,7 @@ onMounted(() => {
               </div>
 
               <h3 class="text-lg font-bold text-gray-900 mb-1 truncate">{{ course.title }}</h3>
+              <p class="text-xs text-gray-400 font-mono mb-1">{{ course.course_code }}</p>
               <p class="text-xs text-gray-500 mb-4 line-clamp-2 h-8">
                 {{ course.description || 'No description provided.' }}
               </p>
