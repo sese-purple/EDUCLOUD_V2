@@ -7,7 +7,9 @@ import GradebookOverviewView from '../views/instructor/GradebookOverviewView.vue
 import GradebookView from '../views/instructor/GradebookView.vue'
 import LiveSessionView from '../views/instructor/LiveSessionView.vue'
 import AttendanceView from '../views/instructor/AttendanceView.vue'
+import SmartAttendanceView from '../views/instructor/SmartAttendanceView.vue'
 import QuizView from '../views/instructor/QuizView.vue'
+import AssessmentManagerView from '../views/instructor/AssessmentManagerView.vue'
 import AssignmentView from '../views/instructor/AssignmentView.vue'
 import GroupsView from '../views/instructor/GroupsView.vue'
 import InstructorSettingsView from '../views/instructor/InstructorSettingsView.vue'
@@ -21,6 +23,9 @@ import StudentCourseListView from '../views/student/StudentCourseListView.vue'
 import StudentSubmissionView from '../views/student/StudentSubmissionView.vue'
 import StudentSettingsView from '../views/student/StudentSettingsView.vue'
 import StudentMarksheetView from '../views/student/StudentMarksheetView.vue'
+import StudentQuizView from '../views/student/StudentQuizView.vue'
+import StudentAssignmentsView from '../views/student/StudentAssignmentsView.vue'
+import StudentCalendarView from '../views/student/StudentCalendarView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -71,9 +76,21 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/attendance',
+      name: 'smart-attendance',
+      component: SmartAttendanceView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/course/:id/attendance',
       name: 'course-attendance',
       component: AttendanceView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/quizzes',
+      name: 'assessment-manager',
+      component: AssessmentManagerView,
       meta: { requiresAuth: true }
     },
     {
@@ -143,9 +160,27 @@ const router = createRouter({
       meta: { requiresAuth: true }
     },
     {
+      path: '/student/course/:id/quiz/:quizId',
+      name: 'student-quiz',
+      component: StudentQuizView,
+      meta: { requiresAuth: true }
+    },
+    {
       path: '/student/course/:id/assignment/:task_id',
       name: 'student-submission',
       component: StudentSubmissionView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/student/assignments',
+      name: 'student-assignments',
+      component: StudentAssignmentsView,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/student/calendar',
+      name: 'student-calendar',
+      component: StudentCalendarView,
       meta: { requiresAuth: true }
     },
     {

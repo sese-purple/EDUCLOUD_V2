@@ -84,7 +84,6 @@ const handleLogin = async () => {
                 class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm transition-colors"
                 placeholder="Enter your username">
             </div>
-            <p class="text-[10px] text-slate-400 mt-1">Hint: Use 'admin', 'prof_smith', or 'student_john' to test routing.</p>
           </div>
 
           <div>

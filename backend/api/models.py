@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
@@ -130,7 +131,7 @@ class ClassSession(models.Model):
     meeting_link = models.URLField(blank=True, default='')
     recording_url = models.URLField(blank=True, default='')
     is_live = models.BooleanField(default=False)
-    qr_code_uuid = models.CharField(max_length=255, unique=True)
+    qr_code_uuid = models.CharField(max_length=255, unique=True, default=uuid.uuid4)
     gps_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     gps_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     allowed_radius_meters = models.IntegerField(default=50)
@@ -211,6 +212,7 @@ class Submission(models.Model):
     student = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True)
     group = models.ForeignKey(ProjectGroup, on_delete=models.SET_NULL, null=True, blank=True)
     file = models.FileField(upload_to='submissions/', blank=True, null=True)
+    text_response = models.TextField(blank=True, default='')
     submitted_at = models.DateTimeField(auto_now_add=True)
     grade = models.IntegerField(null=True, blank=True)
     feedback = models.TextField(blank=True, default='')

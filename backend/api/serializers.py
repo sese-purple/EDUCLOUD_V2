@@ -91,6 +91,8 @@ class GradeSerializer(serializers.ModelSerializer):
 
 
 class ClassSessionSerializer(serializers.ModelSerializer):
+    course_title = serializers.CharField(source='course.title', read_only=True)
+
     class Meta:
         model = ClassSession
         fields = '__all__'
@@ -163,6 +165,16 @@ class QuizSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'description', 'course', 'time_limit', 'total_points',
                   'is_active', 'due_date', 'allow_multiple_attempts', 'instructor', 'questions']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        if request and request.user.is_authenticated and request.user.role == 'student':
+            review = request.query_params.get('review') == '1'
+            if not review and data.get('questions'):
+                for q in data['questions']:
+                    q.pop('correct_answer_index', None)
+        return data
+
 
 class AttemptAnswerSerializer(serializers.ModelSerializer):
     class Meta:
@@ -174,7 +186,10 @@ class QuizAttemptSerializer(serializers.ModelSerializer):
     student = UserSerializer(read_only=True)
     quiz = QuizSerializer(read_only=True)
     answers = AttemptAnswerSerializer(many=True, read_only=True)
+    quiz_id = serializers.IntegerField(write_only=True)
+    student_id = serializers.IntegerField(write_only=True)
 
     class Meta:
         model = QuizAttempt
-        fields = ['id', 'quiz', 'student', 'score', 'total_points', 'percentage', 'started_at', 'submitted_at', 'time_spent', 'is_completed', 'answers']
+        fields = ['id', 'quiz', 'student', 'quiz_id', 'student_id', 'score', 'total_points',
+                  'percentage', 'started_at', 'submitted_at', 'time_spent', 'is_completed', 'answers']

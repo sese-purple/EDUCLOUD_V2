@@ -6,7 +6,7 @@ import InstructorSidebar from '../../components/InstructorSidebar.vue'
 import {
   ArrowLeft, Video, Plus, Clock,
   ExternalLink, Upload, Trash2,
-  Calendar, Monitor
+  Calendar, Monitor, CheckCircle2, AlertCircle
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -17,6 +17,8 @@ const course = ref<any>(null)
 const sessions = ref<any[]>([])
 const isLoading = ref(true)
 const showScheduleForm = ref(false)
+const scheduleError = ref('')
+const scheduleSuccess = ref(false)
 
 const newSession = ref({
   title: '',
@@ -83,20 +85,39 @@ onUnmounted(() => {
   if (countdownRef.value) clearInterval(countdownRef.value)
 })
 
+const parseDate = (str: string): string => {
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(str)) return str + ':00'
+  const dmy = str.match(/^(\d{2})\/(\d{2})\/(\d{4})[\sT](\d{2}:\d{2})/)
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}T${dmy[4]}:00`
+  const mdy = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[\sT](\d{2}:\d{2})/)
+  if (mdy) return `${mdy[3]}-${mdy[1]}-${mdy[2]}T${mdy[4]}:00`
+  return str
+}
+
 const handleSchedule = async () => {
+  scheduleError.value = ''
+  scheduleSuccess.value = false
+
+  if (!newSession.value.scheduled_at) {
+    scheduleError.value = 'Date & Time is required'
+    return
+  }
+
   try {
     await api.post('sessions/', {
       course: courseId.value,
       title: newSession.value.title || 'Live Session',
-      scheduled_at: newSession.value.scheduled_at,
-      ends_at: newSession.value.ends_at || null,
-      meeting_link: newSession.value.meeting_link,
+      scheduled_at: parseDate(newSession.value.scheduled_at),
+      ends_at: newSession.value.ends_at ? parseDate(newSession.value.ends_at) : null,
+      meeting_link: newSession.value.meeting_link || '',
     })
+    scheduleSuccess.value = true
+    setTimeout(() => scheduleSuccess.value = false, 3000)
     showScheduleForm.value = false
     newSession.value = { title: '', scheduled_at: '', ends_at: '', meeting_link: '' }
     await fetchSessions()
-  } catch (error) {
-    console.error("Error scheduling session:", error)
+  } catch (error: any) {
+    scheduleError.value = error.response?.data?.scheduled_at?.[0] || 'Failed to schedule. Check your input and try again.'
   }
 }
 
@@ -179,15 +200,23 @@ const handleAddRecording = async (sessionId: number) => {
 
           <div v-if="showScheduleForm" class="bg-white p-6 rounded-xl shadow-sm border border-indigo-200 mb-8">
             <h3 class="text-lg font-bold text-gray-900 mb-4 border-b pb-2">Schedule New Class</h3>
+
+            <div v-if="scheduleSuccess" class="mb-4 flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 px-4 py-3 rounded-lg">
+              <CheckCircle2 class="h-4 w-4 shrink-0" /> Session scheduled successfully!
+            </div>
+            <div v-if="scheduleError" class="mb-4 flex items-center gap-2 text-sm text-red-700 bg-red-50 border border-red-200 px-4 py-3 rounded-lg">
+              <AlertCircle class="h-4 w-4 shrink-0" /> {{ scheduleError }}
+            </div>
+
             <form @submit.prevent="handleSchedule" class="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Session Title</label>
-                <input v-model="newSession.title" type="text" required placeholder="e.g. Lecture 5: Database Design"
+                <input v-model="newSession.title" type="text" placeholder="e.g. Lecture 5: Database Design"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Date & Time</label>
-                <input v-model="newSession.scheduled_at" type="datetime-local" required
+                <label class="block text-sm font-medium text-red-600 mb-1">Date & Time <span class="text-red-500">*</span></label>
+                <input v-model="newSession.scheduled_at" type="datetime-local"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
               </div>
               <div>
@@ -197,7 +226,7 @@ const handleAddRecording = async (sessionId: number) => {
               </div>
               <div class="md:col-span-2">
                 <label class="block text-sm font-medium text-gray-700 mb-1">Meeting Link</label>
-                <input v-model="newSession.meeting_link" type="url" required placeholder="https://zoom.us/j/... or https://meet.google.com/..."
+                <input v-model="newSession.meeting_link" type="text" placeholder="https://zoom.us/j/... or https://meet.google.com/..."
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-indigo-500 focus:border-indigo-500">
               </div>
               <div class="md:col-span-2 flex justify-end pt-2">

@@ -442,6 +442,8 @@ class ClassSessionViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'super_admin':
             return ClassSession.objects.all()
+        if user.role == 'student':
+            return ClassSession.objects.filter(course__enrolled_students__student=user)
         if user.institution:
             return ClassSession.objects.filter(course__institution=user.institution)
         return ClassSession.objects.none()
@@ -491,11 +493,23 @@ class AttendanceRecordViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'super_admin':
-            return AttendanceRecord.objects.all()
-        if user.institution:
-            return AttendanceRecord.objects.filter(student__institution=user.institution)
-        return AttendanceRecord.objects.none()
+        qs = AttendanceRecord.objects.all()
+        if user.role != 'super_admin':
+            if user.institution:
+                qs = qs.filter(student__institution=user.institution)
+            else:
+                return AttendanceRecord.objects.none()
+        params = self.request.query_params
+        session_id = params.get('session')
+        if session_id:
+            qs = qs.filter(session_id=session_id)
+        student_id = params.get('student')
+        if student_id:
+            qs = qs.filter(student_id=student_id)
+        session_course = params.get('session__course')
+        if session_course:
+            qs = qs.filter(session__course_id=session_course)
+        return qs
 
     def get_serializer(self, *args, **kwargs):
         if isinstance(kwargs.get('data'), list):
@@ -601,11 +615,13 @@ class QuizAttemptViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'super_admin':
-            return QuizAttempt.objects.all()
-        if user.institution:
-            return QuizAttempt.objects.filter(student__institution=user.institution)
-        return QuizAttempt.objects.none()
+        qs = QuizAttempt.objects.all()
+        if user.role != 'super_admin' and user.institution:
+            qs = qs.filter(student__institution=user.institution)
+        quiz_course = self.request.query_params.get('quiz__course')
+        if quiz_course:
+            qs = qs.filter(quiz__course_id=quiz_course)
+        return qs
 
 
 class AttemptAnswerViewSet(viewsets.ModelViewSet):
@@ -614,11 +630,15 @@ class AttemptAnswerViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
-        if user.role == 'super_admin':
-            return AttemptAnswer.objects.all()
-        if user.institution:
-            return AttemptAnswer.objects.filter(attempt__student__institution=user.institution)
-        return AttemptAnswer.objects.none()
+        qs = AttemptAnswer.objects.all()
+        if user.role != 'super_admin' and user.institution:
+            qs = qs.filter(attempt__student__institution=user.institution)
+        attempt_ids = self.request.query_params.get('attempt__in')
+        if attempt_ids:
+            ids = [int(x) for x in attempt_ids.split(',') if x.isdigit()]
+            if ids:
+                qs = qs.filter(attempt_id__in=ids)
+        return qs
 
 
 class AssignmentViewSet(viewsets.ModelViewSet):
@@ -659,4 +679,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         assignment = self.request.query_params.get('assignment')
         if assignment:
             qs = qs.filter(assignment_id=assignment)
+        assignment_course = self.request.query_params.get('assignment__course')
+        if assignment_course:
+            qs = qs.filter(assignment__course_id=assignment_course)
+        student = self.request.query_params.get('student')
+        if student:
+            qs = qs.filter(student_id=student)
         return qs

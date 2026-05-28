@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import api from '../../services/api'
 import StudentSidebar from '../../components/StudentSidebar.vue'
 import {
-  Settings, User, Mail, Save, Key,
-  CheckCircle, Eye, EyeOff, Bell
+  Menu, LayoutDashboard, GraduationCap, BookOpen, Settings, User, Mail, Save, Key,
+  CheckCircle, Eye, EyeOff, Bell, LogOut
 } from 'lucide-vue-next'
 
+const router = useRouter()
 const user = ref<any>({})
 const saving = ref(false)
 const passwordSaving = ref(false)
@@ -18,6 +20,7 @@ const passwordForm = ref({ old_password: '', new_password: '', confirm_password:
 const showOld = ref(false)
 const showNew = ref(false)
 const showConfirm = ref(false)
+const mobileMenuOpen = ref(false)
 
 onMounted(async () => {
   try {
@@ -68,8 +71,42 @@ const changePassword = async () => {
 <template>
   <div class="flex h-screen bg-gray-50 font-sans overflow-hidden">
     <StudentSidebar />
+    <!-- Mobile Menu Overlay -->
+    <div v-if="mobileMenuOpen" class="fixed inset-0 z-50 flex md:hidden">
+      <div class="fixed inset-0 bg-gray-800/75" @click="mobileMenuOpen = false"></div>
+      <div class="relative flex w-full max-w-xs flex-1 flex-col bg-white pt-5 pb-4">
+        <div class="flex items-center justify-between px-4 mb-6">
+          <h1 class="text-xl font-bold text-gray-900 tracking-tight">EDUCLOUD <span class="text-indigo-600">2.0</span></h1>
+          <button @click="mobileMenuOpen = false" class="text-gray-400 hover:text-gray-600"><span class="text-2xl">&times;</span></button>
+        </div>
+        <nav class="flex-1 px-4 space-y-1">
+          <a @click="mobileMenuOpen = false; router.push('/student')"
+             class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors cursor-pointer">
+            <LayoutDashboard class="w-5 h-5 mr-3 text-gray-400" /> Dashboard
+          </a>
+          <a @click="mobileMenuOpen = false; router.push('/student/marksheet')"
+             class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors cursor-pointer">
+            <GraduationCap class="w-5 h-5 mr-3 text-gray-400" /> Marksheet
+          </a>
+          <a @click="mobileMenuOpen = false; router.push('/student/courses')"
+             class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors cursor-pointer">
+            <BookOpen class="w-5 h-5 mr-3 text-gray-400" /> My Courses
+          </a>
+          <a @click="mobileMenuOpen = false; router.push('/student/settings')"
+             class="flex items-center px-3 py-2.5 text-gray-700 hover:bg-gray-50 rounded-lg font-medium transition-colors cursor-pointer">
+            <Settings class="w-5 h-5 mr-3 text-gray-400" /> Settings
+          </a>
+          <hr class="my-3 border-gray-200" />
+          <a @click="localStorage.removeItem('access_token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('user_role'); localStorage.removeItem('user_id'); localStorage.removeItem('username'); router.push('/login')"
+             class="flex items-center px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors cursor-pointer">
+            <LogOut class="w-5 h-5 mr-3 text-red-500" /> Sign Out
+          </a>
+        </nav>
+      </div>
+    </div>
     <div class="flex-1 flex flex-col overflow-hidden">
-      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-6 shadow-sm">
+      <header class="h-16 bg-white border-b border-gray-200 flex items-center px-4 sm:px-6 shadow-sm">
+        <button @click="mobileMenuOpen = true" class="mr-3 md:hidden text-gray-500 hover:text-gray-900 focus:outline-none"><Menu class="h-6 w-6" /></button>
         <Settings class="h-5 w-5 text-indigo-600 mr-3" />
         <h2 class="text-lg font-bold text-gray-800">Settings</h2>
       </header>
